@@ -15,8 +15,12 @@ class Com():
         self.alive = True
         self.token = None
 
-        self._countReady = 1
+        self._countReady = 0
         self._allReady = False
+        self._preId = None
+        self._preIds = []
+
+
 
 
 
@@ -51,22 +55,20 @@ class Com():
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4Ready)
     def onReady(self, event: Msg4Ready):
         self._updateClock(event)
-        self._countReady +=1
+        self._countReady = min(self._countReady+1, self.nbProcess)
         if self._countReady == self.nbProcess:
             self._broadcastAllReady()
-    
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4AllReady)
     def onAllReady(self, event: Msg4AllReady):
         self._updateClock(event)
-        self._countReady = self.nbProcess + 1
-    
-
+        self._countReady = self.nbProcess
+        self._findIdConsensus()
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4IdConsensus)
     def onIdConsensus(self, event: Msg4IdConsensus):
         self._updateClock(event)
-        
+        self._preIds.append(event.payload)
     
     # endregion Private subs
 
@@ -77,15 +79,13 @@ class Com():
     def sendTo(self, msg: Any, toId: int):
         self.post(
             Msg4Send(msg,
-                    self.clock,
-                    toId)
+                     toId)
         )
 
     def broadcast(self, msg: Any):
         self.post(
             Msg4Broadcast(msg,
-                        self.clock,
-                        self.myId)
+                          self.myId)
         )
 
     # endregion Public post
@@ -93,16 +93,10 @@ class Com():
     # region Private post
 
     def _broadcastReady(self):
-        self.post(
-            Msg4Ready(None, 
-                      self.clock)
-        )
+        self.post(Msg4Ready(None))
     
     def _broadcastAllReady(self):
-        self.post(
-            Msg4AllReady(None, 
-                      self.clock)
-        )
+        self.post(Msg4AllReady(None))
 
     # endregion Private post
 
@@ -111,9 +105,16 @@ class Com():
         self.clock = max(self.clock, msg.timestamp) + 1
 
     def _findIdConsensus(self):
-        preId = random.randint(0, 10000 * self.nbProcess)
-        self.post(Msg4IdConsensus)
-
+        self._preId = random.randint(0, 10000 * self.nbProcess)
+        self.post(Msg4IdConsensus(self._preId))
+        sleep(1)
+        if len(set(self._preIds))!=self.nbProcess:
+            self._preIds = []
+            sleep(1)
+            self._findIdConsensus()
+        else:
+            self._preIds.sort()
+            self.myId = self._preIds.index(self._preId)
 
 
     def manageToken(self):
@@ -143,6 +144,7 @@ class Com():
 
     def post(self, msg: Msg):
         self.clock += 1
+        msg.setStamp(self.clock)
         PyBus.Instance().post(msg)
 
     def nextId(self):
