@@ -5,6 +5,7 @@ def launch(nbProcess, runningTime=5):
     processes = []
 
     for i in range(nbProcess):
+        print(f"launcher P{i}")
         processes.append(Process(f"P{i}", nbProcess))
 
     sleep(runningTime)

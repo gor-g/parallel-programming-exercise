@@ -27,11 +27,12 @@ class Com:
         self._isSynchronizing = False
         self._syncCounter = 0
 
-        self._broadcastReady()
 
+
+    def init(self):
         sleep(1)
 
-
+        self._broadcastReady()
 
 
 
@@ -93,6 +94,7 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4AllReady)
     def onAllReady(self, event: Msg4AllReady):
         self._updateClock(event)
+        print("already recieved", flush=True)
         if not self._allReady:
             self._allReady = True
             self._countReady = self.nbProcess
@@ -137,7 +139,7 @@ class Com:
     # region Private post
 
     def _broadcastReady(self):
-        print("ready")
+        print(f"ready {self.name}")
         if not self._allReady:
             self._post(Msg4Ready(None))
     
@@ -172,8 +174,6 @@ class Com:
             if not self._allReady:
                 self._broadcastReady()
                 sleep(1)
-            
-
 
     def manageToken(self):
         while self.token:

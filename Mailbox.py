@@ -11,5 +11,7 @@ class Mailbox:
     def addMessage(self, msg: Msg):
         self.msgQue.append(msg)
 
-    def getMsg(self) -> Msg:
-        return self.msgQue.popleft()
+    def getMessage(self) -> Msg:
+        m = self.msgQue.popleft()
+        print(m)
+        return 
