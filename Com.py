@@ -5,7 +5,7 @@ from pyeventbus3.pyeventbus3 import PyBus, subscribe, Mode
 from Token import Token
 from Msg import *
 
-class Com(ComBase):
+class Com:
     def __init__(self, nbProcess):
         self.myId = None
         self.nbProcess = nbProcess
@@ -18,6 +18,9 @@ class Com(ComBase):
         self._allReady = False
         self._preId = None
         self._preIds = []
+
+        self._isSynchronizing = False
+        self._syncCounter = 0
 
 
 
@@ -48,6 +51,24 @@ class Com(ComBase):
             self._updateClock(event)
             self.token = event.payload
             self.manageToken()
+
+
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4Synchronize)
+    def onSynchronize(self, event: Msg4Synchronize):
+        self._updateClock(event)
+        self._isSynchronizing = True
+        self._syncCounter += 1
+        if self._syncCounter == self.nbProcess:
+            self._post(
+                Msg4SynchronizeDone(
+                self.myId
+            ))
+
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4SynchronizeDone)
+    def onSynchronizeDone(self, event: Msg4SynchronizeDone):
+        self._updateClock(event)
+        self._syncCounter = 0
+        self._isSynchronizing = False
 
     # region Private subs
 
@@ -86,7 +107,16 @@ class Com(ComBase):
             Msg4Broadcast(msg,
                           self.myId)
         )
-    
+
+    def synchronize(self):
+        self._post(
+            Msg4Synchronize(None, self.myId, self.nextId())
+        )
+        self._isSynchronizing = True
+        while self._isSynchronizing:
+            sleep(0.01)
+        
+
 
     # endregion Public post
 
@@ -143,7 +173,11 @@ class Com(ComBase):
         self.token = None
 
     def launchToken(self):
-        self._post(TokenSlot(self.myId))
+        self._post(
+            Msg4TokenTransfere(
+                Token(self.myId)
+            )
+        )
 
     def _post(self, msg: Msg):
         self.clock += 1
@@ -152,6 +186,9 @@ class Com(ComBase):
 
     def nextId(self):
         return (self.myId + 1) % self.nbProcess
+
+    def prevId(self):
+        return (self.myId - 1) % self.nbProcess
 
 
     def stop(self):

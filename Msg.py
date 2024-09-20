@@ -26,6 +26,17 @@ class Msg4TokenTransfere(Msg):
     def __init__(self, payload:Token) -> None:
         super().__init__(payload)
 
+class Msg4Synchronize(Msg):
+    def __init__(self, payload: None, fromId:int, toId : int) -> None:
+        super().__init__(payload)
+        self.fromId = fromId
+        self.toId = toId
+
+class Msg4SynchronizeDone(Msg):
+    def __init__(self, payload: int) -> None:
+        super().__init__(payload)
+
+
 # region init msgs
 
 class Msg4Ready(Msg):
