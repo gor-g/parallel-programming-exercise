@@ -1,5 +1,6 @@
 from typing import Any
 from Token import Token
+from datetime import datetime
 
 class Msg:
     def __init__(self, payload: Any) -> None:
@@ -11,6 +12,11 @@ class Msg:
     
     def setStamp(self, stamp):
         self.stamp = stamp
+
+
+    def log(self):
+        attrs = ", ".join(f"{k}={v}" for k, v in self.__dict__.items())
+        print( f'{datetime.now()} : {self.__class__.__name__}({attrs})' )
 
 class Msg4Send(Msg):
     def __init__(self, payload: Any, toId :int,) -> None:
@@ -26,6 +32,10 @@ class Msg4TokenTransfere(Msg):
     def __init__(self, payload:Token) -> None:
         super().__init__(payload)
 
+    def log(self): 
+        return None
+    
+
 class Msg4Synchronize(Msg):
     def __init__(self, payload: None, fromId:int, toId : int) -> None:
         super().__init__(payload)
@@ -35,6 +45,14 @@ class Msg4Synchronize(Msg):
 class Msg4SynchronizeDone(Msg):
     def __init__(self, payload: int) -> None:
         super().__init__(payload)
+
+
+class Msg4SendSync(Msg):
+    def __init__(self, payload: Any, fromId:int, toId : int) -> None:
+        super().__init__(payload)
+        self.fromId = fromId
+        self.toId = toId
+
 
 
 # region init msgs

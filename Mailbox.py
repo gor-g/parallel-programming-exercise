@@ -14,4 +14,4 @@ class Mailbox:
     def getMessage(self) -> Msg:
         m = self.msgQue.popleft()
         print(m)
-        return 
+        return m

@@ -33,6 +33,9 @@ class Com:
         sleep(1)
 
         self._broadcastReady()
+        sleep(2)
+        if self.myId == self.nbProcess - 1:
+            self.launchToken()
 
 
 
@@ -40,7 +43,6 @@ class Com:
         return self.nbProcess
 
     def getMyId(self):
-        self._waitId()
         return self.myId
 
     # region Public subs
@@ -94,7 +96,6 @@ class Com:
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4AllReady)
     def onAllReady(self, event: Msg4AllReady):
         self._updateClock(event)
-        print("already recieved", flush=True)
         if not self._allReady:
             self._allReady = True
             self._countReady = self.nbProcess
@@ -169,11 +170,6 @@ class Com:
             self.myId = self._preIds.index(self._preId)
             print(f"found id : {self.myId}")
 
-    def _waitId(self):
-        while self.myId is None:
-            if not self._allReady:
-                self._broadcastReady()
-                sleep(1)
 
     def manageToken(self):
         while self.token:
@@ -182,6 +178,7 @@ class Com:
                 self.transfereToken()
 
     def requestSC(self):
+        print("token requested")
         while not self.token:
             sleep(0.01)
         self.token.use()
@@ -210,6 +207,7 @@ class Com:
     def _post(self, msg: Msg):
         self.clock += 1
         msg.setStamp(self.clock)
+        msg.log()
         PyBus.Instance().post(msg)
 
     def nextId(self):
