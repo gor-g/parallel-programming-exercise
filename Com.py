@@ -54,7 +54,7 @@ class Com:
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4Broadcast)
     def onBroadcast(self, event: Msg4Broadcast):
-        if event.senderId != self.myId:
+        if event.fromId != self.myId:
             self._updateClock(event)
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4TokenTransfere)
@@ -81,6 +81,7 @@ class Com:
         self._updateClock(event)
         self._syncCounter = 0
         self._isSynchronizing = False
+
 
 
 
@@ -132,6 +133,7 @@ class Com:
         self._isSynchronizing = True
         while self._isSynchronizing:
             sleep(0.01)
+        print(f"synchronized {self.myId}")
         
 
 

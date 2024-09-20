@@ -15,4 +15,4 @@ def launch(nbProcess, runningTime=5):
 
 
 if __name__ == '__main__':
-    launch(nbProcess=5, runningTime=10)
+    launch(nbProcess=3, runningTime=10)
