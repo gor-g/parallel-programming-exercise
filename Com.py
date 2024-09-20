@@ -3,16 +3,21 @@ from typing import Any
 import random
 from pyeventbus3.pyeventbus3 import PyBus, subscribe, Mode
 from Token import Token
+from Mailbox import Mailbox
 from Msg import *
+from datetime import datetime
 
 class Com:
-    def __init__(self, nbProcess):
+    def __init__(self, nbProcess, name):
+        self.name = name
         self.myId = None
         self.nbProcess = nbProcess
         PyBus.Instance().register(self, self)
         self.clock = 0
         self.alive = True
         self.token:None | Token = None
+
+        self.mailbox = Mailbox()
 
         self._countReady = 0
         self._allReady = False
@@ -22,6 +27,9 @@ class Com:
         self._isSynchronizing = False
         self._syncCounter = 0
 
+        self._broadcastReady()
+
+        sleep(1)
 
 
 
@@ -31,13 +39,14 @@ class Com:
         return self.nbProcess
 
     def getMyId(self):
+        self._waitId()
         return self.myId
 
     # region Public subs
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4Send)
     def onRecieve(self, event: Msg4Send):
-        if event.recieverId == self.myId:
+        if event.toId == self.myId:
             self._updateClock(event)
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4Broadcast)
@@ -70,20 +79,25 @@ class Com:
         self._syncCounter = 0
         self._isSynchronizing = False
 
+
+
     # region Private subs
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4Ready)
     def onReady(self, event: Msg4Ready):
         self._updateClock(event)
-        self._countReady = min(self._countReady+1, self.nbProcess)
-        if self._countReady == self.nbProcess:
+        self._countReady = self._countReady+1
+        if self._countReady >= self.nbProcess:
             self._broadcastAllReady()
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4AllReady)
     def onAllReady(self, event: Msg4AllReady):
         self._updateClock(event)
-        self._countReady = self.nbProcess
-        self._findIdConsensus()
+        if not self._allReady:
+            self._allReady = True
+            self._countReady = self.nbProcess
+            self._findIdConsensus()
+
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4IdConsensus)
     def onIdConsensus(self, event: Msg4IdConsensus):
@@ -123,28 +137,42 @@ class Com:
     # region Private post
 
     def _broadcastReady(self):
-        self._post(Msg4Ready(None))
+        print("ready")
+        if not self._allReady:
+            self._post(Msg4Ready(None))
     
     def _broadcastAllReady(self):
+        print(str(datetime.now()) + " " + str(self.myId) + " allready")
+        print(str(datetime.now()) + " " + str(self.name) + " allready")
         self._post(Msg4AllReady(None))
 
     # endregion Private post
 
 
     def _updateClock(self, msg:Msg):
-        self.clock = max(self.clock, msg.timestamp) + 1
+        self.clock = max(self.clock, msg.stamp) + 1
+
 
     def _findIdConsensus(self):
+        print("looking for consensus",flush=True)
         self._preId = random.randint(0, 10000 * self.nbProcess)
         self._post(Msg4IdConsensus(self._preId))
-        sleep(1)
+        while len(self._preIds) != self.nbProcess:
+            sleep(0.1)
         if len(set(self._preIds))!=self.nbProcess:
             self._preIds = []
-            sleep(1)
             self._findIdConsensus()
         else:
             self._preIds.sort()
             self.myId = self._preIds.index(self._preId)
+            print(f"found id : {self.myId}")
+
+    def _waitId(self):
+        while self.myId is None:
+            if not self._allReady:
+                self._broadcastReady()
+                sleep(1)
+            
 
 
     def manageToken(self):
