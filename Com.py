@@ -5,15 +5,14 @@ from pyeventbus3.pyeventbus3 import PyBus, subscribe, Mode
 from Token import Token
 from Msg import *
 
-class Com():
-
+class Com(ComBase):
     def __init__(self, nbProcess):
         self.myId = None
         self.nbProcess = nbProcess
         PyBus.Instance().register(self, self)
         self.clock = 0
         self.alive = True
-        self.token = None
+        self.token:None | Token = None
 
         self._countReady = 0
         self._allReady = False
@@ -43,11 +42,11 @@ class Com():
         if event.senderId != self.myId:
             self._updateClock(event)
 
-    @subscribe(threadMode=Mode.PARALLEL, onEvent=Token)
-    def onToken(self, event: Token):
-        if event.holderId == self.myId:
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=Msg4TokenTransfere)
+    def onToken(self, event: Msg4TokenTransfere):
+        if event.payload.holderId == self.myId:
             self._updateClock(event)
-            self.token = event
+            self.token = event.payload
             self.manageToken()
 
     # region Private subs
@@ -77,26 +76,27 @@ class Com():
     # region Public post
 
     def sendTo(self, msg: Any, toId: int):
-        self.post(
-            Msg4Send(msg,
+        self._post(
+            Msg4Send(msg,   
                      toId)
         )
 
     def broadcast(self, msg: Any):
-        self.post(
+        self._post(
             Msg4Broadcast(msg,
                           self.myId)
         )
+    
 
     # endregion Public post
 
     # region Private post
 
     def _broadcastReady(self):
-        self.post(Msg4Ready(None))
+        self._post(Msg4Ready(None))
     
     def _broadcastAllReady(self):
-        self.post(Msg4AllReady(None))
+        self._post(Msg4AllReady(None))
 
     # endregion Private post
 
@@ -106,7 +106,7 @@ class Com():
 
     def _findIdConsensus(self):
         self._preId = random.randint(0, 10000 * self.nbProcess)
-        self.post(Msg4IdConsensus(self._preId))
+        self._post(Msg4IdConsensus(self._preId))
         sleep(1)
         if len(set(self._preIds))!=self.nbProcess:
             self._preIds = []
@@ -132,17 +132,20 @@ class Com():
         self.token.release()
 
     def transfereToken(self):
-        self.post(
-            self.token.changeHolder(
-                self.nextId()
+        self._post(
+            Msg4TokenTransfere(
+                    self.token.changeHolder(
+                        self.nextId()
+                )
             )
+            
         )
         self.token = None
 
     def launchToken(self):
-        self.post(Token(self.myId))
+        self._post(TokenSlot(self.myId))
 
-    def post(self, msg: Msg):
+    def _post(self, msg: Msg):
         self.clock += 1
         msg.setStamp(self.clock)
         PyBus.Instance().post(msg)

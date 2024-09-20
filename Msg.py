@@ -23,9 +23,8 @@ class Msg4Broadcast(Msg):
         self.fromId = fromId
 
 class Msg4TokenTransfere(Msg):
-    def __init__(self, payload:Token,) -> None:
+    def __init__(self, payload:Token) -> None:
         super().__init__(payload)
-
 
 # region init msgs
 
